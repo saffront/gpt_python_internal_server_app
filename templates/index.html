@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Internal AI App</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        background-color: #f0f2f5;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background-color: #ffffff;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .header h1 {
+        color: #1a1a1a;
+        font-size: 1.8rem;
+        font-weight: 600;
+      }
+
+      #chat-container {
+        flex-grow: 1;
+        margin: 20px auto;
+        padding: 30px;
+        width: 95%;
+        max-width: 1000px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow-y: auto;
+        height: calc(100vh - 180px);
+        margin-bottom: 120px;
+      }
+
+      .message {
+        margin-bottom: 2rem;
+        padding: 1.8rem;
+        border-radius: 12px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.6;
+        position: relative;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .user-message {
+        background-color: #007aff;
+        color: white;
+        margin-left: auto;
+        box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+      }
+
+      .ai-message {
+        background-color: #f1f3f5;
+        color: #1a1a1a;
+        margin-right: auto;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      #input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .input-wrapper {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        gap: 12px;
+        padding: 0 20px;
+      }
+
+      #user-input {
+        flex-grow: 1;
+        padding: 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      #user-input:focus {
+        outline: none;
+        border-color: #007aff;
+        box-shadow: 0 2px 12px rgba(0, 122, 255, 0.2);
+      }
+
+      button {
+        padding: 16px 28px;
+        background-color: #007aff;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+      }
+
+      button:hover {
+        background-color: #0056b3;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .loading {
+        display: none;
+        margin: 1rem auto;
+        text-align: center;
+        color: #666;
+      }
+
+      .typing-indicator {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: #f1f3f5;
+        border-radius: 20px;
+      }
+
+      .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #007aff;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: bounce 1.4s infinite ease-in-out;
+        opacity: 0.6;
+      }
+
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes bounce {
+        0%,
+        80%,
+        100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-8px);
+        }
+      }
+
+      /* Scrollbar styling */
+      #chat-container::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #chat-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      #chat-container::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+
+      #chat-container::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 600px) {
+        .message {
+          max-width: 90%;
+        }
+
+        .input-wrapper {
+          padding: 0 10px;
+        }
+
+        button {
+          padding: 16px 20px;
+        }
+      }
+
+      .file-upload-container {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        width: 90%;
+        max-width: 500px;
+      }
+
+      .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        padding: 10px 20px;
+        background: white;
+        border-bottom: 1px solid #eee;
+      }
+
+      .tool-button {
+        padding: 8px 16px;
+        background: #f1f3f5;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #1a1a1a;
+        transition: all 0.3s ease;
+      }
+
+      .tool-button:hover {
+        background: #e9ecef;
+      }
+
+      .tool-button.active {
+        background: #007aff;
+        color: white;
+      }
+
+      .file-drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        margin: 1rem 0;
+        transition: all 0.3s ease;
+      }
+
+      .file-drop-zone.drag-over {
+        border-color: #007aff;
+        background: rgba(0, 122, 255, 0.1);
+      }
+
+      .close-button {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+      }
+
+      .download-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 8px;
+        padding: 4px 12px;
+        background: #28a745;
+        color: white;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .message-actions {
+        margin-top: 1.2rem;
+        display: flex;
+        gap: 12px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .message:hover .message-actions {
+        opacity: 1;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+      }
+
+      .clear-history {
+        background: #f1f3f5;
+        color: #666;
+      }
+
+      .clear-history:hover {
+        background: #e9ecef;
+        color: #dc3545;
+      }
+
+      .upload-btn {
+        padding: 16px;
+        margin-right: 8px;
+        background: #f1f3f5;
+      }
+
+      .upload-btn:hover {
+        background: #e9ecef;
+      }
+
+      .file-upload-container .message-input {
+        margin-top: 1rem;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      /* Update input wrapper to accommodate upload button */
+      .input-wrapper {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 20px;
+      }
+
+      .submit-file-button {
+        background-color: #007aff;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+      }
+
+      .submit-file-button:hover {
+        background-color: #0056b3;
+      }
+
+      .file-drop-zone.has-file {
+        border-color: #007aff;
+        background: rgba(0, 122, 255, 0.05);
+      }
+
+      .header-buttons {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* Add styles for markdown content */
+      .markdown-content {
+        line-height: 1.7;
+      }
+      .markdown-content code {
+        background: #f4f4f4;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+      .markdown-content pre {
+        background: #f4f4f4;
+        padding: 1.2rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 1.2rem 0;
+      }
+      .markdown-content h1,
+      .markdown-content h2,
+      .markdown-content h3 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      .markdown-content p {
+        margin-bottom: 1rem;
+      }
+      .markdown-content ul,
+      .markdown-content ol {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+      }
+      .markdown-content li {
+        margin-bottom: 0.5rem;
+      }
+
+      .header-left {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .model-selector {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .model-button {
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+        background: white;
+        color: #666;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .model-button:hover {
+        background: #f5f5f5;
+      }
+
+      .model-button.active {
+        background: #007aff;
+        color: white;
+        border-color: #007aff;
+      }
+
+      .header {
+        padding: 1.5rem 2rem;
+      }
+    </style>
+    <!-- Add marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <h1>Internal AI App</h1>
+        <div class="model-selector">
+          <button class="model-button active" data-model="gpt-4o-mini">
+            GPT-4o Mini
+          </button>
+          <button class="model-button" data-model="gpt-4o">GPT-4o</button>
+        </div>
+      </div>
+      <div class="header-buttons">
+        <button class="tool-button clear-history" onclick="clearConversation()">
+          <i class="fas fa-sync"></i> New Chat
+        </button>
+        <button class="tool-button clear-history" onclick="clearHistory()">
+          <i class="fas fa-trash"></i> Clear History
+        </button>
+      </div>
+    </div>
+
+    <div id="chat-container"></div>
+
+    <div id="input-container">
+      <div class="input-wrapper">
+        <button class="tool-button upload-btn" onclick="toggleFileUpload()">
+          <i class="fas fa-file-upload"></i>
+        </button>
+        <input type="text" id="user-input" placeholder="Type your message..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="file-upload-container" id="fileUploadContainer">
+      <button class="close-button" onclick="toggleFileUpload()">&times;</button>
+      <h2>Upload File</h2>
+      <div class="file-drop-zone" id="dropZone">
+        <p id="dropZoneText">Drag and drop your file here or click to select</p>
+        <p
+          id="selectedFileName"
+          style="display: none; color: #007aff; margin-top: 8px"
+        ></p>
+        <input type="file" id="fileInput" style="display: none" />
+      </div>
+      <input
+        type="text"
+        class="message-input"
+        id="fileMessage"
+        placeholder="Add a message with your file (optional)"
+      />
+      <button
+        id="submitFileButton"
+        class="submit-file-button"
+        onclick="submitFile()"
+        style="display: none; width: 100%; margin-top: 1rem"
+      >
+        Send
+      </button>
+    </div>
+
+    <!-- Add Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+
+    <script>
+      // Load chat history from localStorage when page loads
+      document.addEventListener("DOMContentLoaded", () => {
+        const savedMessages = localStorage.getItem("chatHistory")
+        if (savedMessages) {
+          const chatContainer = document.getElementById("chat-container")
+          chatContainer.innerHTML = savedMessages
+          chatContainer.scrollTop = chatContainer.scrollHeight
+        }
+      })
+
+      // Add model-specific context tracking
+      let currentModel = "gpt-4o-mini"
+
+      // Update the model selection handler
+      document.querySelectorAll(".model-button").forEach((button) => {
+        button.addEventListener("click", function () {
+          // Update active state
+          document
+            .querySelectorAll(".model-button")
+            .forEach((btn) => btn.classList.remove("active"))
+          this.classList.add("active")
+
+          // Update current model
+          currentModel = this.dataset.model
+
+          // Clear both visual and server-side context
+          document.getElementById("chat-container").innerHTML = ""
+          localStorage.removeItem("chatHistory")
+
+          // Clear server context for the new model
+          fetch("/clear-history", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ model: currentModel }),
+          })
+            .then((response) => response.json())
+            .catch((error) => console.error("Error:", error))
+        })
+      })
+
+      // Update sendMessage function with logging
+      function sendMessage() {
+        const input = document.getElementById("user-input")
+        const message = input.value.trim()
+        if (!message) return
+
+        console.log(`Sending message using model: ${currentModel}`)
+
+        displayMessage(message, "user")
+        input.value = ""
+        showLoading()
+
+        fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: message,
+            model: currentModel,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(`Received response from model: ${currentModel}`)
+            hideLoading()
+            displayMessage(data.response, "ai")
+          })
+          .catch((error) => {
+            console.error(`Error with model ${currentModel}:`, error)
+            hideLoading()
+            displayMessage("Error: Failed to get response", "ai")
+          })
+      }
+
+      function displayMessage(message, sender) {
+        const container = document.getElementById("chat-container")
+        const messageDiv = document.createElement("div")
+        messageDiv.className = `message ${sender}-message`
+
+        if (sender === "ai") {
+          // Render markdown for AI responses
+          const markdownContent = document.createElement("div")
+          markdownContent.className = "markdown-content"
+          markdownContent.innerHTML = marked.parse(message)
+          messageDiv.appendChild(markdownContent)
+        } else {
+          messageDiv.textContent = message
+        }
+
+        if (sender === "ai") {
+          const actionsDiv = document.createElement("div")
+          actionsDiv.className = "message-actions"
+          const downloadButton = document.createElement("button")
+          downloadButton.className = "download-button"
+          downloadButton.innerHTML = '<i class="fas fa-download"></i> Download'
+          downloadButton.onclick = () => downloadResponse(message)
+          actionsDiv.appendChild(downloadButton)
+          messageDiv.appendChild(actionsDiv)
+        }
+
+        container.appendChild(messageDiv)
+        container.scrollTop = container.scrollHeight
+        localStorage.setItem("chatHistory", container.innerHTML)
+      }
+
+      function showLoading() {
+        const container = document.getElementById("chat-container")
+        const loadingDiv = document.createElement("div")
+        loadingDiv.className = "message ai-message loading"
+        loadingDiv.innerHTML = `
+          <div class="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        `
+        loadingDiv.id = "loading-indicator"
+        container.appendChild(loadingDiv)
+        loadingDiv.style.display = "block"
+        container.scrollTop = container.scrollHeight
+      }
+
+      function hideLoading() {
+        const loadingDiv = document.getElementById("loading-indicator")
+        if (loadingDiv) {
+          loadingDiv.remove()
+        }
+      }
+
+      // Allow Enter key to send message
+      document
+        .getElementById("user-input")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            sendMessage()
+          }
+        })
+
+      // Clear chat history function
+      function clearHistory() {
+        // Clear local storage
+        localStorage.removeItem("chatHistory")
+        // Clear the chat container
+        document.getElementById("chat-container").innerHTML = ""
+        // Clear the session history on the server
+        fetch("/clear-history", {
+          method: "POST",
+        })
+          .then((response) => response.json())
+          .catch((error) => console.error("Error:", error))
+      }
+
+      let selectedFile = null
+
+      // File input change handler
+      document.getElementById("fileInput").addEventListener("change", (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          handleFileSelect(file)
+        }
+      })
+
+      // Drop zone event handlers
+      const dropZone = document.getElementById("dropZone")
+      dropZone.addEventListener("click", () => {
+        document.getElementById("fileInput").click()
+      })
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        dropZone.classList.add("drag-over")
+      })
+
+      dropZone.addEventListener("dragleave", (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        dropZone.classList.remove("drag-over")
+      })
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        dropZone.classList.remove("drag-over")
+
+        const file = e.dataTransfer.files[0]
+        if (file) {
+          handleFileSelect(file)
+        }
+      })
+
+      // Fix the toggle function
+      function toggleFileUpload() {
+        const overlay = document.getElementById("overlay")
+        const container = document.getElementById("fileUploadContainer")
+
+        if (!overlay.style.display || overlay.style.display === "none") {
+          overlay.style.display = "block"
+          container.style.display = "block"
+        } else {
+          overlay.style.display = "none"
+          container.style.display = "none"
+          // Reset the form
+          selectedFile = null
+          document.getElementById("fileMessage").value = ""
+          document.getElementById("selectedFileName").style.display = "none"
+          document.getElementById("dropZoneText").textContent =
+            "Drag and drop your file here or click to select"
+          document.getElementById("submitFileButton").style.display = "none"
+          dropZone.classList.remove("has-file")
+        }
+      }
+
+      function handleFileSelect(file) {
+        selectedFile = file
+        dropZone.classList.add("has-file")
+        document.getElementById(
+          "selectedFileName"
+        ).textContent = `Selected: ${file.name}`
+        document.getElementById("selectedFileName").style.display = "block"
+        document.getElementById("dropZoneText").textContent =
+          "Drop a different file or click to change"
+        document.getElementById("submitFileButton").style.display = "block"
+      }
+
+      // Update submitFile function with logging
+      function submitFile() {
+        if (!selectedFile) return
+
+        console.log(`Uploading file using model: ${currentModel}`)
+
+        const formData = new FormData()
+        formData.append("file", selectedFile)
+        formData.append("model", currentModel)
+
+        // Add message if present
+        const messageInput = document.getElementById("fileMessage")
+        if (messageInput && messageInput.value.trim()) {
+          formData.append("message", messageInput.value.trim())
+          // Display the message text without prefix
+          displayMessage(messageInput.value.trim(), "user")
+        }
+
+        // Display the filename
+        displayMessage(`${selectedFile.name}`, "user")
+
+        toggleFileUpload()
+        showLoading()
+
+        fetch("/upload", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            hideLoading()
+            if (data.error) {
+              displayMessage(`Error: ${data.error}`, "ai")
+            } else {
+              displayMessage(data.response, "ai")
+            }
+          })
+          .catch((error) => {
+            hideLoading()
+            displayMessage("Error processing file", "ai")
+            console.error("Error:", error)
+          })
+
+        // Clear the form
+        selectedFile = null
+        if (messageInput) {
+          messageInput.value = ""
+        }
+        document.getElementById("selectedFileName").style.display = "none"
+        document.getElementById("dropZoneText").textContent =
+          "Drag and drop your file here or click to select"
+        document.getElementById("submitFileButton").style.display = "none"
+        dropZone.classList.remove("has-file")
+      }
+
+      function downloadResponse(content, filename = "response.txt") {
+        fetch("/download", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content, filename }),
+        })
+          .then((response) => response.blob())
+          .then((blob) => {
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = filename
+            a.click()
+            window.URL.revokeObjectURL(url)
+          })
+          .catch((error) => console.error("Error:", error))
+      }
+
+      function clearConversation() {
+        document.getElementById("chat-container").innerHTML = ""
+
+        // Clear the session history for the current model
+        fetch("/clear-history", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model: currentModel }),
+        })
+          .then((response) => response.json())
+          .catch((error) => console.error("Error:", error))
+      }
+
+      // Add Enter key handler for file message input
+      document
+        .getElementById("fileMessage")
+        .addEventListener("keypress", function (e) {
+          if (
+            e.key === "Enter" &&
+            document.getElementById("submitFileButton").style.display ===
+              "block"
+          ) {
+            submitFile()
+          }
+        })
+
+      // Add ESC key handler to close dialog
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          const overlay = document.getElementById("overlay")
+          if (overlay.style.display === "block") {
+            toggleFileUpload()
+          }
+        }
+      })
+    </script>
+  </body>
+</html>
